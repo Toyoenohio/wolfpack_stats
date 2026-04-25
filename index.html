@@ -1,4 +1,3 @@
-# Wolfpack Stats
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -31,16 +30,25 @@
     </style>
 </head>
 <body class="bg-volley-dark min-h-screen text-white font-sans">
-    <!-- Header -->
+    <!-- Header con iconos -->
     <header class="bg-volley-blue p-4 shadow-lg">
         <div class="max-w-lg mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold">Wolfpack Stats</h1>
             <div class="flex gap-2">
-                <button onclick="showView('players-list')" class="text-sm bg-white/20 px-3 py-1 rounded-lg hover:bg-white/30 transition">
-                    Jugadoras
+                <button onclick="showView('players-list')" class="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition" title="Jugadoras">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
                 </button>
-                <button onclick="showView('practice')" class="text-sm bg-white/20 px-3 py-1 rounded-lg hover:bg-white/30 transition">
-                    Práctica
+                <button onclick="showView('practice')" class="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition" title="Práctica">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0v1.5m0-1.5H6m13.5 0v1.5m0-1.5h-1.5M9 20.25h6M10 20.25v-2.25m4 2.25v-2.25" />
+                    </svg>
+                </button>
+                <button onclick="showView('sessions-list')" class="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition" title="Sesiones">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -209,46 +217,18 @@
         </div>
     </div>
 
-    <!-- DEBUG PANEL - Visible para diagnóstico -->
-    <div id="debug-panel" class="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 p-2 text-xs font-mono z-50 max-h-32 overflow-y-auto">
-        <div class="flex justify-between items-center mb-1">
-            <span>Debug Mode</span>
-            <button onclick="document.getElementById('debug-panel').style.display='none'" class="text-gray-400">×</button>
-        </div>
-        <div id="debug-logs"></div>
-    </div>
-
+    <!-- Configuración de Supabase -->
     <script>
-        // Función de log visible
-        function debugLog(msg) {
-            console.log(msg);
-            const logs = document.getElementById('debug-logs');
-            if (logs) {
-                logs.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
-            }
-        }
-
-        // Configuración de Supabase
         const SUPABASE_CONFIG = {
             URL: 'https://iwqgxcrmobiwipsbucjq.supabase.co',
             ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3cWd4Y3Jtb2Jpd2lwc2J1Y2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMDA0MTUsImV4cCI6MjA5MjY3NjQxNX0.N5qGx-h5HyhyD6OLP8XZ0ad5ipppuhwHIQloN0VB394'
         };
         
-        debugLog('Config cargada: ' + SUPABASE_CONFIG.URL);
-        
         let supabaseClient;
         try {
             supabaseClient = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
-            debugLog('Supabase client OK');
         } catch (e) {
-            debugLog('ERROR: ' + e.message);
-            alert('Error al conectar con Supabase: ' + e.message);
-        }
-        
-        // Función para mostrar errores visibles
-        function showError(msg) {
-            debugLog('ERROR: ' + msg);
-            alert('Error: ' + msg);
+            console.error('Error al conectar con Supabase:', e);
         }
 
         // State
