@@ -333,7 +333,19 @@
         document.getElementById('btn-end-session').addEventListener('click', async () => {
             if (!confirm('¿Cerrar la práctica?')) return;
             
-            await supabaseClient.from('practice_sessions').update({ status: 'closed' }).eq('id', currentSession.id);
+            debugLog('Cerrando sesión ID: ' + currentSession.id);
+            const { error } = await supabaseClient
+                .from('practice_sessions')
+                .update({ status: 'closed' })
+                .eq('id', currentSession.id);
+            
+            if (error) {
+                debugLog('ERROR cerrando: ' + error.message);
+                alert('Error al cerrar: ' + error.message);
+                return;
+            }
+            
+            debugLog('Sesión cerrada OK');
             localStorage.removeItem('current_session');
             currentSession = null;
             location.reload();
