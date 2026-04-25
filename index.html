@@ -1,0 +1,534 @@
+# Wolfpack Stats
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Wolfpack Stats - Estadísticas de Voleibol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'volley-blue': '#1E40AF',
+                        'volley-dark': '#0F172A',
+                        'volley-card': '#1E293B',
+                        'success': '#10B981',
+                        'danger': '#EF4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .court-position { transition: all 0.2s; }
+        .court-position:active { transform: scale(0.95); }
+        .view { display: none; }
+        .view.active { display: block; }
+    </style>
+</head>
+<body class="bg-volley-dark min-h-screen text-white font-sans">
+    <!-- Header -->
+    <header class="bg-volley-blue p-4 shadow-lg">
+        <div class="max-w-lg mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Wolfpack Stats</h1>
+            <div class="flex gap-2">
+                <button onclick="showView('players-list')" class="text-sm bg-white/20 px-3 py-1 rounded-lg hover:bg-white/30 transition">
+                    Jugadoras
+                </button>
+                <button onclick="showView('practice')" class="text-sm bg-white/20 px-3 py-1 rounded-lg hover:bg-white/30 transition">
+                    Práctica
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- VIEW: Practice Stats -->
+    <main id="view-practice" class="view active max-w-lg mx-auto p-4">
+        <!-- Session Info -->
+        <div id="session-info" class="bg-volley-card rounded-xl p-4 mb-4 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-400 text-xs">Práctica Activa</p>
+                    <p id="session-name" class="font-semibold">-</p>
+                </div>
+                <button id="btn-end-session" class="text-xs bg-danger/20 text-danger px-3 py-1 rounded-lg hover:bg-danger/30 transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+
+        <!-- No Session -->
+        <div id="no-session" class="text-center py-8">
+            <p class="text-gray-400 mb-4">No hay práctica activa</p>
+            <button onclick="showModal('modal-practice')" class="bg-volley-blue text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
+                Iniciar Práctica
+            </button>
+        </div>
+
+        <!-- Quick Stats Form -->
+        <div id="stats-form" class="hidden">
+            <!-- Player Selection -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm text-gray-400">Jugadora</label>
+                    <button onclick="showModal('modal-player')" class="text-xs text-volley-blue hover:text-blue-400 transition">
+                        + Nueva
+                    </button>
+                </div>
+                <select id="select-player" class="w-full p-3 bg-volley-card border border-gray-700 rounded-xl text-white focus:border-volley-blue focus:outline-none">
+                    <option value="">Seleccionar jugadora...</option>
+                </select>
+            </div>
+
+            <!-- Action Type -->
+            <div class="mb-4">
+                <label class="text-sm text-gray-400 mb-2 block">Acción</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" data-action="ataque" class="action-btn bg-volley-card border border-gray-700 p-3 rounded-xl text-sm hover:border-volley-blue transition">Ataque</button>
+                    <button type="button" data-action="pase" class="action-btn bg-volley-card border border-gray-700 p-3 rounded-xl text-sm hover:border-volley-blue transition">Pase</button>
+                    <button type="button" data-action="recepcion" class="action-btn bg-volley-card border border-gray-700 p-3 rounded-xl text-sm hover:border-volley-blue transition">Recepción</button>
+                    <button type="button" data-action="bloqueo" class="action-btn bg-volley-card border border-gray-700 p-3 rounded-xl text-sm hover:border-volley-blue transition">Bloqueo</button>
+                    <button type="button" data-action="servicio" class="action-btn bg-volley-card border border-gray-700 p-3 rounded-xl text-sm hover:border-volley-blue transition">Servicio</button>
+                </div>
+            </div>
+
+            <!-- Position Selection -->
+            <div class="mb-4">
+                <label class="text-sm text-gray-400 mb-2 block">Posición</label>
+                <div class="bg-volley-card/50 rounded-xl p-4">
+                    <div class="grid grid-cols-3 gap-2 max-w-[200px] mx-auto">
+                        <button type="button" data-pos="4" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">4</button>
+                        <button type="button" data-pos="3" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">3</button>
+                        <button type="button" data-pos="2" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">2</button>
+                        <button type="button" data-pos="5" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">5</button>
+                        <button type="button" data-pos="6" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">6</button>
+                        <button type="button" data-pos="1" class="court-pos bg-volley-card h-16 rounded-lg border-2 border-gray-700 hover:border-volley-blue flex items-center justify-center font-bold text-lg">1</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div class="mb-6">
+                <label class="text-sm text-gray-400 mb-2 block">Resultado</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" id="btn-success" class="bg-success/20 border-2 border-success text-success py-4 rounded-xl font-semibold hover:bg-success/30 transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        Exitoso
+                    </button>
+                    <button type="button" id="btn-fail" class="bg-danger/20 border-2 border-danger text-danger py-4 rounded-xl font-semibold hover:bg-danger/30 transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        Fallido
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Stats -->
+        <div id="recent-stats" class="hidden">
+            <h3 class="text-sm text-gray-400 mb-3">Registros Recientes</h3>
+            <div id="stats-list" class="space-y-2"></div>
+        </div>
+    </main>
+
+    <!-- VIEW: Players List -->
+    <main id="view-players-list" class="view max-w-lg mx-auto p-4">
+        <h2 class="text-xl font-bold mb-4">Jugadoras</h2>
+        <div id="players-list-container" class="space-y-3">
+            <p class="text-gray-400 text-center py-8">Cargando...</p>
+        </div>
+    </main>
+
+    <!-- VIEW: Player Detail -->
+    <main id="view-player-detail" class="view max-w-lg mx-auto p-4">
+        <button onclick="showView('players-list')" class="text-gray-400 hover:text-white mb-4 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            Volver
+        </button>
+        
+        <div id="player-detail-header" class="bg-volley-card rounded-xl p-4 mb-4">
+            <h2 id="detail-player-name" class="text-2xl font-bold">-</h2>
+            <p id="detail-player-info" class="text-gray-400">-</p>
+        </div>
+
+        <h3 class="text-lg font-semibold mb-3">Estadísticas por Práctica</h3>
+        <div id="player-sessions-list" class="space-y-4">
+            <p class="text-gray-400 text-center py-4">Cargando estadísticas...</p>
+        </div>
+    </main>
+
+    <!-- Modal: New Practice -->
+    <div id="modal-practice" class="fixed inset-0 bg-black/80 flex items-center justify-center hidden z-50">
+        <div class="bg-volley-card rounded-2xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold mb-4">Nueva Práctica</h3>
+            <form id="form-practice">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-1">Nombre (opcional)</label>
+                    <input type="text" id="practice-name" placeholder="Ej: Práctica Sábado" class="w-full p-3 bg-volley-dark border border-gray-700 rounded-xl text-white focus:border-volley-blue focus:outline-none">
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="hideModal('modal-practice')" class="flex-1 py-3 rounded-xl border border-gray-700 hover:bg-gray-800 transition">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-volley-blue text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">Iniciar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: New Player -->
+    <div id="modal-player" class="fixed inset-0 bg-black/80 flex items-center justify-center hidden z-50">
+        <div class="bg-volley-card rounded-2xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold mb-4">Nueva Jugadora</h3>
+            <form id="form-player">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-1">Nombre *</label>
+                    <input type="text" id="player-name" required placeholder="Ej: Isabella Pini" class="w-full p-3 bg-volley-dark border border-gray-700 rounded-xl text-white focus:border-volley-blue focus:outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-1">Número</label>
+                    <input type="number" id="player-number" placeholder="#" class="w-full p-3 bg-volley-dark border border-gray-700 rounded-xl text-white focus:border-volley-blue focus:outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-1">Posición Principal</label>
+                    <select id="player-position" class="w-full p-3 bg-volley-dark border border-gray-700 rounded-xl text-white focus:border-volley-blue focus:outline-none">
+                        <option value="">Seleccionar...</option>
+                        <option value="central">Central</option>
+                        <option value="opuesta">Opuesta</option>
+                        <option value="punta">Punta</option>
+                        <option value="armadora">Armadora</option>
+                        <option value="libero">Líbero</option>
+                    </select>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="hideModal('modal-player')" class="flex-1 py-3 rounded-xl border border-gray-700 hover:bg-gray-800 transition">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-volley-blue text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">Agregar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Configuración de Supabase (cargar desde config.js) -->
+    <script src="config.js"></script>
+    <script>
+        // Verificar que la configuración existe
+        if (typeof SUPABASE_CONFIG === 'undefined') {
+            alert('Error: No se encontró config.js\n\nPor favor:\n1. Copia config.template.js a config.js\n2. Agrega tus credenciales de Supabase\n\nVer README.md para más información.');
+            throw new Error('SUPABASE_CONFIG no definido. Crear config.js basado en config.template.js');
+        }
+        
+        const supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+
+        // State
+        let currentSession = JSON.parse(localStorage.getItem('current_session') || 'null');
+        let selectedAction = null;
+        let selectedPosition = null;
+        let players = [];
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPlayers();
+            if (currentSession) showSessionUI();
+        });
+
+        // View Navigation
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            
+            if (viewName === 'players-list') loadPlayersList();
+        }
+
+        // Load Players from Supabase
+        async function loadPlayers() {
+            const { data, error } = await supabase.from('players').select('*').order('name');
+            if (error) {
+                console.error('Error loading players:', error);
+                return;
+            }
+            players = data || [];
+            updatePlayerSelect();
+        }
+
+        // Update player select dropdown
+        function updatePlayerSelect() {
+            const select = document.getElementById('select-player');
+            select.innerHTML = '<option value="">Seleccionar jugadora...</option>';
+            players.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.id;
+                option.textContent = `#${player.number || '-'} ${player.name}`;
+                select.appendChild(option);
+            });
+        }
+
+        // Show Modal
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // New Practice
+        document.getElementById('form-practice').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('practice-name').value || 'Práctica ' + new Date().toLocaleDateString();
+            
+            const { data, error } = await supabase.from('practice_sessions').insert([{ name }]).select().single();
+            if (error) {
+                alert('Error creando práctica');
+                return;
+            }
+            
+            currentSession = data;
+            localStorage.setItem('current_session', JSON.stringify(currentSession));
+            hideModal('modal-practice');
+            showSessionUI();
+        });
+
+        // Show Session UI
+        function showSessionUI() {
+            document.getElementById('no-session').classList.add('hidden');
+            document.getElementById('session-info').classList.remove('hidden');
+            document.getElementById('stats-form').classList.remove('hidden');
+            document.getElementById('recent-stats').classList.remove('hidden');
+            document.getElementById('session-name').textContent = currentSession.name;
+            loadRecentStats();
+        }
+
+        // End Session
+        document.getElementById('btn-end-session').addEventListener('click', async () => {
+            if (!confirm('¿Cerrar la práctica?')) return;
+            
+            await supabase.from('practice_sessions').update({ status: 'closed' }).eq('id', currentSession.id);
+            localStorage.removeItem('current_session');
+            currentSession = null;
+            location.reload();
+        });
+
+        // New Player
+        document.getElementById('form-player').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const player = {
+                name: document.getElementById('player-name').value,
+                number: document.getElementById('player-number').value || null,
+                position: document.getElementById('player-position').value || null
+            };
+            
+            const { data, error } = await supabase.from('players').insert([player]).select().single();
+            if (error) {
+                alert('Error guardando jugadora');
+                return;
+            }
+            
+            players.push(data);
+            updatePlayerSelect();
+            hideModal('modal-player');
+            document.getElementById('form-player').reset();
+            
+            // Select the new player
+            document.getElementById('select-player').value = data.id;
+        });
+
+        // Action Selection
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.action-btn').forEach(b => {
+                    b.classList.remove('border-volley-blue', 'bg-volley-blue/20');
+                    b.classList.add('border-gray-700');
+                });
+                btn.classList.remove('border-gray-700');
+                btn.classList.add('border-volley-blue', 'bg-volley-blue/20');
+                selectedAction = btn.dataset.action;
+            });
+        });
+
+        // Position Selection
+        document.querySelectorAll('.court-pos').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.court-pos').forEach(b => {
+                    b.classList.remove('border-volley-blue', 'bg-volley-blue/20');
+                    b.classList.add('border-gray-700');
+                });
+                btn.classList.remove('border-gray-700');
+                btn.classList.add('border-volley-blue', 'bg-volley-blue/20');
+                selectedPosition = btn.dataset.pos;
+            });
+        });
+
+        // Record Stat
+        document.getElementById('btn-success').addEventListener('click', () => recordStat('success'));
+        document.getElementById('btn-fail').addEventListener('click', () => recordStat('fail'));
+
+        async function recordStat(result) {
+            const playerId = document.getElementById('select-player').value;
+            
+            if (!playerId || !selectedAction || !selectedPosition) {
+                alert('Completa todos los campos');
+                return;
+            }
+            
+            const stat = {
+                player_id: playerId,
+                session_id: currentSession.id,
+                action: selectedAction,
+                position: parseInt(selectedPosition),
+                result: result
+            };
+            
+            const { error } = await supabase.from('stats').insert([stat]);
+            if (error) {
+                alert('Error guardando estadística');
+                return;
+            }
+            
+            // Reset
+            selectedAction = null;
+            selectedPosition = null;
+            document.querySelectorAll('.action-btn, .court-pos').forEach(b => {
+                b.classList.remove('border-volley-blue', 'bg-volley-blue/20');
+                b.classList.add('border-gray-700');
+            });
+            
+            loadRecentStats();
+        }
+
+        // Load Recent Stats
+        async function loadRecentStats() {
+            if (!currentSession) return;
+            
+            const { data, error } = await supabase
+                .from('stats')
+                .select('*, players(name)')
+                .eq('session_id', currentSession.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            if (error) return;
+            
+            const list = document.getElementById('stats-list');
+            list.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 text-center py-4">Sin registros</p>';
+                return;
+            }
+            
+            data.forEach(stat => {
+                const div = document.createElement('div');
+                div.className = 'bg-volley-card p-3 rounded-lg flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <span class="font-semibold">${stat.players?.name || 'Unknown'}</span>
+                        <span class="text-gray-400 text-sm"> - ${stat.action} (pos ${stat.position})</span>
+                    </div>
+                    <span class="${stat.result === 'success' ? 'text-success' : 'text-danger'} font-bold text-xl">${stat.result === 'success' ? '✓' : '✗'}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // Load Players List View
+        async function loadPlayersList() {
+            const container = document.getElementById('players-list-container');
+            container.innerHTML = '<p class="text-gray-400 text-center py-8">Cargando...</p>';
+            
+            const { data, error } = await supabase.from('players').select('*').order('name');
+            if (error) {
+                container.innerHTML = '<p class="text-red-400 text-center">Error cargando jugadoras</p>';
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">No hay jugadoras registradas</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            data.forEach(player => {
+                const card = document.createElement('div');
+                card.className = 'bg-volley-card p-4 rounded-xl cursor-pointer hover:bg-volley-card/80 transition';
+                card.onclick = () => showPlayerDetail(player.id);
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-volley-blue rounded-full flex items-center justify-center text-xl font-bold">
+                            ${player.number || '-'}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-lg">${player.name}</p>
+                            <p class="text-gray-400 text-sm">${player.position || 'Sin posición'}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Show Player Detail
+        async function showPlayerDetail(playerId) {
+            showView('player-detail');
+            
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                document.getElementById('detail-player-name').textContent = player.name;
+                document.getElementById('detail-player-info').textContent = `#${player.number || '-'} | ${player.position || 'Sin posición'}`;
+            }
+            
+            // Load stats grouped by session
+            const { data, error } = await supabase
+                .from('stats')
+                .select('*, practice_sessions(name, date)')
+                .eq('player_id', playerId)
+                .order('created_at', { ascending: false });
+            
+            const container = document.getElementById('player-sessions-list');
+            
+            if (error || !data || data.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">Sin estadísticas registradas</p>';
+                return;
+            }
+            
+            // Group by session
+            const bySession = {};
+            data.forEach(stat => {
+                const sessionId = stat.session_id;
+                if (!bySession[sessionId]) {
+                    bySession[sessionId] = {
+                        name: stat.practice_sessions?.name || 'Práctica',
+                        date: stat.practice_sessions?.date,
+                        stats: []
+                    };
+                }
+                bySession[sessionId].stats.push(stat);
+            });
+            
+            container.innerHTML = '';
+            Object.entries(bySession).forEach(([sessionId, session]) => {
+                const successCount = session.stats.filter(s => s.result === 'success').length;
+                const totalCount = session.stats.length;
+                const percentage = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
+                
+                const div = document.createElement('div');
+                div.className = 'bg-volley-card p-4 rounded-xl';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="font-semibold">${session.name}</p>
+                        <span class="text-sm text-gray-400">${new Date(session.date).toLocaleDateString()}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">${totalCount} acciones</span>
+                        <span class="${percentage >= 50 ? 'text-success' : 'text-danger'} font-bold">${percentage}% efectividad</span>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        ${successCount} ✓ | ${totalCount - successCount} ✗
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>

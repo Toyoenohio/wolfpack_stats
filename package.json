@@ -1,0 +1,12 @@
+{
+  "name": "wolfpack-stats",
+  "version": "1.0.0",
+  "description": "Estadísticas de voleibol",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "npx serve ."
+  },
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
