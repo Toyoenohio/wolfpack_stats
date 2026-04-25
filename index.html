@@ -374,7 +374,19 @@
         document.getElementById('btn-end-session').addEventListener('click', async () => {
             if (!confirm('¿Cerrar la práctica?')) return;
             
-            await supabaseClient.from('practice_sessions').update({ status: 'closed' }).eq('id', currentSession.id);
+            debugLog('Cerrando sesión: ' + currentSession.id);
+            const { error } = await supabaseClient
+                .from('practice_sessions')
+                .update({ status: 'closed' })
+                .eq('id', currentSession.id);
+            
+            if (error) {
+                debugLog('Error cerrando sesión: ' + error.message);
+                alert('Error al cerrar sesión');
+                return;
+            }
+            
+            debugLog('Sesión cerrada correctamente');
             localStorage.removeItem('current_session');
             currentSession = null;
             location.reload();
@@ -542,6 +554,7 @@
         // Show Player Detail
         async function showPlayerDetail(playerId) {
             showView('player-detail');
+            debugLog('Cargando detalle de jugadora: ' + playerId);
             
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -550,7 +563,8 @@
             }
             
             // Load stats grouped by session
-            const { data, error } = await supabase
+            debugLog('Consultando estadísticas...');
+            const { data, error } = await supabaseClient
                 .from('stats')
                 .select('*, practice_sessions(name, date)')
                 .eq('player_id', playerId)
@@ -558,15 +572,58 @@
             
             const container = document.getElementById('player-sessions-list');
             
-            if (error || !data || data.length === 0) {
+            if (error) {
+                debugLog('Error cargando stats: ' + error.message);
+                container.innerHTML = '<p class="text-red-400 text-center py-4">Error cargando estadísticas</p>';
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                debugLog('No hay estadísticas para esta jugadora');
                 container.innerHTML = '<p class="text-gray-400 text-center py-4">Sin estadísticas registradas</p>';
                 return;
             }
+            
+            debugLog('Estadísticas encontradas: ' + data.length);
             
             // Group by session
             const bySession = {};
             data.forEach(stat => {
                 const sessionId = stat.session_id;
+                if (!bySession[sessionId]) {
+                    bySession[sessionId] = {
+                        name: stat.practice_sessions?.name || 'Práctica',
+                        date: stat.practice_sessions?.date,
+                        stats: []
+                    };
+                }
+                bySession[sessionId].stats.push(stat);
+            });
+            
+            container.innerHTML = '';
+            Object.entries(bySession).forEach(([sessionId, session]) => {
+                const successCount = session.stats.filter(s => s.result === 'success').length;
+                const totalCount = session.stats.length;
+                const percentage = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
+                
+                const div = document.createElement('div');
+                div.className = 'bg-volley-card p-4 rounded-xl';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="font-semibold">${session.name}</p>
+                        <span class="text-sm text-gray-400">${new Date(session.date).toLocaleDateString()}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">${totalCount} acciones</span>
+                        <span class="${percentage >= 50 ? 'text-success' : 'text-danger'} font-bold">${percentage}% efectividad</span>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        ${successCount} ✓ | ${totalCount - successCount} ✗
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
                 if (!bySession[sessionId]) {
                     bySession[sessionId] = {
                         name: stat.practice_sessions?.name || 'Práctica',
