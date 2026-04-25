@@ -259,46 +259,9 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            debugLog('App iniciada');
             loadPlayers();
-            checkActiveSession();
+            if (currentSession) showSessionUI();
         });
-
-        // Check for active session in Supabase
-        async function checkActiveSession() {
-            debugLog('Buscando sesiones activas...');
-            
-            // Primero verificar localStorage
-            const savedSession = JSON.parse(localStorage.getItem('current_session') || 'null');
-            if (savedSession) {
-                debugLog('Sesión en localStorage: ' + savedSession.name);
-                currentSession = savedSession;
-                showSessionUI();
-                return;
-            }
-            
-            // Buscar en Supabase
-            const { data, error } = await supabaseClient
-                .from('practice_sessions')
-                .select('*')
-                .eq('status', 'active')
-                .order('created_at', { ascending: false })
-                .limit(1);
-            
-            if (error) {
-                debugLog('Error buscando sesiones: ' + error.message);
-                return;
-            }
-            
-            if (data && data.length > 0) {
-                debugLog('Sesión activa encontrada en BD: ' + data[0].name);
-                currentSession = data[0];
-                localStorage.setItem('current_session', JSON.stringify(currentSession));
-                showSessionUI();
-            } else {
-                debugLog('No hay sesiones activas');
-            }
-        }
 
         // View Navigation
         function showView(viewName) {
@@ -344,15 +307,12 @@
             e.preventDefault();
             const name = document.getElementById('practice-name').value || 'Práctica ' + new Date().toLocaleDateString();
             
-            debugLog('Creando sesión: ' + name);
             const { data, error } = await supabaseClient.from('practice_sessions').insert([{ name }]).select().single();
             if (error) {
-                debugLog('Error creando práctica: ' + error.message);
                 alert('Error creando práctica');
                 return;
             }
             
-            debugLog('Sesión creada con ID: ' + data.id);
             currentSession = data;
             localStorage.setItem('current_session', JSON.stringify(currentSession));
             hideModal('modal-practice');
@@ -361,12 +321,11 @@
 
         // Show Session UI
         function showSessionUI() {
-            debugLog('Mostrando UI de sesión: ' + (currentSession?.name || 'sin nombre'));
             document.getElementById('no-session').classList.add('hidden');
             document.getElementById('session-info').classList.remove('hidden');
             document.getElementById('stats-form').classList.remove('hidden');
             document.getElementById('recent-stats').classList.remove('hidden');
-            document.getElementById('session-name').textContent = currentSession?.name || 'Práctica';
+            document.getElementById('session-name').textContent = currentSession.name;
             loadRecentStats();
         }
 
@@ -374,19 +333,7 @@
         document.getElementById('btn-end-session').addEventListener('click', async () => {
             if (!confirm('¿Cerrar la práctica?')) return;
             
-            debugLog('Cerrando sesión: ' + currentSession.id);
-            const { error } = await supabaseClient
-                .from('practice_sessions')
-                .update({ status: 'closed' })
-                .eq('id', currentSession.id);
-            
-            if (error) {
-                debugLog('Error cerrando sesión: ' + error.message);
-                alert('Error al cerrar sesión');
-                return;
-            }
-            
-            debugLog('Sesión cerrada correctamente');
+            await supabaseClient.from('practice_sessions').update({ status: 'closed' }).eq('id', currentSession.id);
             localStorage.removeItem('current_session');
             currentSession = null;
             location.reload();
@@ -554,7 +501,6 @@
         // Show Player Detail
         async function showPlayerDetail(playerId) {
             showView('player-detail');
-            debugLog('Cargando detalle de jugadora: ' + playerId);
             
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -563,8 +509,7 @@
             }
             
             // Load stats grouped by session
-            debugLog('Consultando estadísticas...');
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('stats')
                 .select('*, practice_sessions(name, date)')
                 .eq('player_id', playerId)
@@ -572,58 +517,15 @@
             
             const container = document.getElementById('player-sessions-list');
             
-            if (error) {
-                debugLog('Error cargando stats: ' + error.message);
-                container.innerHTML = '<p class="text-red-400 text-center py-4">Error cargando estadísticas</p>';
-                return;
-            }
-            
-            if (!data || data.length === 0) {
-                debugLog('No hay estadísticas para esta jugadora');
+            if (error || !data || data.length === 0) {
                 container.innerHTML = '<p class="text-gray-400 text-center py-4">Sin estadísticas registradas</p>';
                 return;
             }
-            
-            debugLog('Estadísticas encontradas: ' + data.length);
             
             // Group by session
             const bySession = {};
             data.forEach(stat => {
                 const sessionId = stat.session_id;
-                if (!bySession[sessionId]) {
-                    bySession[sessionId] = {
-                        name: stat.practice_sessions?.name || 'Práctica',
-                        date: stat.practice_sessions?.date,
-                        stats: []
-                    };
-                }
-                bySession[sessionId].stats.push(stat);
-            });
-            
-            container.innerHTML = '';
-            Object.entries(bySession).forEach(([sessionId, session]) => {
-                const successCount = session.stats.filter(s => s.result === 'success').length;
-                const totalCount = session.stats.length;
-                const percentage = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
-                
-                const div = document.createElement('div');
-                div.className = 'bg-volley-card p-4 rounded-xl';
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <p class="font-semibold">${session.name}</p>
-                        <span class="text-sm text-gray-400">${new Date(session.date).toLocaleDateString()}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">${totalCount} acciones</span>
-                        <span class="${percentage >= 50 ? 'text-success' : 'text-danger'} font-bold">${percentage}% efectividad</span>
-                    </div>
-                    <div class="mt-2 text-xs text-gray-500">
-                        ${successCount} ✓ | ${totalCount - successCount} ✗
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
                 if (!bySession[sessionId]) {
                     bySession[sessionId] = {
                         name: stat.practice_sessions?.name || 'Práctica',
