@@ -513,6 +513,7 @@
         // Show Player Detail
         async function showPlayerDetail(playerId) {
             showView('player-detail');
+            debugLog('Cargando jugadora: ' + playerId);
             
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -521,7 +522,8 @@
             }
             
             // Load stats grouped by session
-            const { data, error } = await supabase
+            debugLog('Consultando stats...');
+            const { data, error } = await supabaseClient
                 .from('stats')
                 .select('*, practice_sessions(name, date)')
                 .eq('player_id', playerId)
@@ -529,10 +531,19 @@
             
             const container = document.getElementById('player-sessions-list');
             
-            if (error || !data || data.length === 0) {
+            if (error) {
+                debugLog('ERROR: ' + error.message);
+                container.innerHTML = '<p class="text-red-400 text-center py-4">Error: ' + error.message + '</p>';
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                debugLog('Sin estadísticas');
                 container.innerHTML = '<p class="text-gray-400 text-center py-4">Sin estadísticas registradas</p>';
                 return;
             }
+            
+            debugLog('Stats encontradas: ' + data.length);
             
             // Group by session
             const bySession = {};
