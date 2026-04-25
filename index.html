@@ -215,6 +215,10 @@
             URL: 'https://iwqgxcrmobiwipsbucjq.supabase.co',
             ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3cWd4Y3Jtb2Jpd2lwc2J1Y2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMDA0MTUsImV4cCI6MjA5MjY3NjQxNX0.N5qGx-h5HyhyD6OLP8XZ0ad5ipppuhwHIQloN0VB394'
         };
+        // Debug: Verificar config
+        console.log("Supabase URL:", SUPABASE_CONFIG.URL);
+        console.log("Supabase Key length:", SUPABASE_CONFIG.ANON_KEY.length);
+        
         const supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
         // State
