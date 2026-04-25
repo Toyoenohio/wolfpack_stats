@@ -209,15 +209,12 @@
         </div>
     </div>
 
-    <!-- Configuración de Supabase (cargar desde config.js) -->
-    <script src="config.js"></script>
+    <!-- Configuración de Supabase -->
     <script>
-        // Verificar que la configuración existe
-        if (typeof SUPABASE_CONFIG === 'undefined') {
-            alert('Error: No se encontró config.js\n\nPor favor:\n1. Copia config.template.js a config.js\n2. Agrega tus credenciales de Supabase\n\nVer README.md para más información.');
-            throw new Error('SUPABASE_CONFIG no definido. Crear config.js basado en config.template.js');
-        }
-        
+        const SUPABASE_CONFIG = {
+            URL: 'https://iwqgxcrmobiwipsbucjq.supabase.co',
+            ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3cWd4Y3Jtb2Jpd2lwc2J1Y2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMDA0MTUsImV4cCI6MjA5MjY3NjQxNX0.N5qGx-h5HyhyD6OLP8XZ0ad5ipppuhwHIQloN0VB394'
+        };
         const supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
         // State
