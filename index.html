@@ -259,9 +259,46 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
+            debugLog('App iniciada');
             loadPlayers();
-            if (currentSession) showSessionUI();
+            checkActiveSession();
         });
+
+        // Check for active session in Supabase
+        async function checkActiveSession() {
+            debugLog('Buscando sesiones activas...');
+            
+            // Primero verificar localStorage
+            const savedSession = JSON.parse(localStorage.getItem('current_session') || 'null');
+            if (savedSession) {
+                debugLog('Sesión en localStorage: ' + savedSession.name);
+                currentSession = savedSession;
+                showSessionUI();
+                return;
+            }
+            
+            // Buscar en Supabase
+            const { data, error } = await supabaseClient
+                .from('practice_sessions')
+                .select('*')
+                .eq('status', 'active')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (error) {
+                debugLog('Error buscando sesiones: ' + error.message);
+                return;
+            }
+            
+            if (data && data.length > 0) {
+                debugLog('Sesión activa encontrada en BD: ' + data[0].name);
+                currentSession = data[0];
+                localStorage.setItem('current_session', JSON.stringify(currentSession));
+                showSessionUI();
+            } else {
+                debugLog('No hay sesiones activas');
+            }
+        }
 
         // View Navigation
         function showView(viewName) {
@@ -307,12 +344,15 @@
             e.preventDefault();
             const name = document.getElementById('practice-name').value || 'Práctica ' + new Date().toLocaleDateString();
             
+            debugLog('Creando sesión: ' + name);
             const { data, error } = await supabaseClient.from('practice_sessions').insert([{ name }]).select().single();
             if (error) {
+                debugLog('Error creando práctica: ' + error.message);
                 alert('Error creando práctica');
                 return;
             }
             
+            debugLog('Sesión creada con ID: ' + data.id);
             currentSession = data;
             localStorage.setItem('current_session', JSON.stringify(currentSession));
             hideModal('modal-practice');
@@ -321,11 +361,12 @@
 
         // Show Session UI
         function showSessionUI() {
+            debugLog('Mostrando UI de sesión: ' + (currentSession?.name || 'sin nombre'));
             document.getElementById('no-session').classList.add('hidden');
             document.getElementById('session-info').classList.remove('hidden');
             document.getElementById('stats-form').classList.remove('hidden');
             document.getElementById('recent-stats').classList.remove('hidden');
-            document.getElementById('session-name').textContent = currentSession.name;
+            document.getElementById('session-name').textContent = currentSession?.name || 'Práctica';
             loadRecentStats();
         }
 
